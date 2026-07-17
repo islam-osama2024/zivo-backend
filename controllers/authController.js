@@ -93,6 +93,9 @@ const forgotPassword = async (req, res) => {
         user: process.env.EMAIL_USER,
         pass: process.env.EMAIL_PASS,
       },
+      connectionTimeout: 10000,
+      greetingTimeout: 10000,
+      socketTimeout: 10000,
     });
 
     await transporter.sendMail({
@@ -115,6 +118,7 @@ const forgotPassword = async (req, res) => {
       message: 'لو الإيميل ده مسجل عندنا، هيوصلك رابط إعادة تعيين كلمة المرور',
     });
   } catch (error) {
+    console.error('FORGOT PASSWORD ERROR:', error.message);
     res.status(500).json({ message: 'حصل خطأ، جرب تاني كمان شوية' });
   }
 };
