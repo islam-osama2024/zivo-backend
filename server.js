@@ -3,13 +3,28 @@ const express = require('express');
 const cors = require('cors');
 const connectDB = require('./config/db');
 
-// الاتصال بقاعدة البيانات
 connectDB();
-
 const app = express();
 
 // Middlewares
-app.use(cors({ origin: process.env.CLIENT_URL || '*' }));
+const allowedOrigins = [
+  'https://zivo-six.vercel.app',
+  'http://localhost:5173',
+  'http://localhost:5174',
+];
+
+app.use(cors({
+  origin: function (origin, callback) {
+    // اسمح لو الطلب من غير origin (زي Postman) أو من الروابط المسموحة
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS: ' + origin));
+    }
+  },
+  credentials: true,
+}));
+
 app.use(express.json());
 
 // Routes
@@ -17,12 +32,10 @@ app.use('/api/auth', require('./routes/authRoutes'));
 app.use('/api/products', require('./routes/productRoutes'));
 app.use('/api/orders', require('./routes/orderRoutes'));
 
-// Route اختبارية
 app.get('/', (req, res) => {
   res.json({ message: 'API شغالة تمام 🚀' });
 });
 
-// معالجة الأخطاء العامة
 app.use((err, req, res, next) => {
   console.error(err.stack);
   res.status(500).json({ message: 'حصل خطأ في السيرفر' });
