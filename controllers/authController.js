@@ -1,6 +1,5 @@
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
-const nodemailer = require('nodemailer');
 const User = require('../models/User');
 
 const generateToken = (id) => {
@@ -87,34 +86,34 @@ const forgotPassword = async (req, res) => {
 
     const resetUrl = `${process.env.FRONTEND_URL}/reset-password/${resetToken}`;
 
-    const transporter = nodemailer.createTransport({
-      host: 'smtp.gmail.com',
-      port: 465,
-      secure: true,
-      auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS,
+    // ← بنستخدم Resend (إرسال عن طريق HTTP، مش SMTP) عشان Railway بيمنع SMTP
+    const emailResponse = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
+        'Content-Type': 'application/json',
       },
-      connectionTimeout: 10000,
-      greetingTimeout: 10000,
-      socketTimeout: 10000,
+      body: JSON.stringify({
+        from: 'Zivo <onboarding@resend.dev>',
+        to: [user.email],
+        subject: 'إعادة تعيين كلمة المرور - Zivo',
+        html: `
+          <div dir="rtl" style="font-family: Arial, sans-serif; max-width: 480px; margin: auto;">
+            <h2 style="color: #10b981;">إعادة تعيين كلمة المرور</h2>
+            <p>مرحبًا ${user.name}،</p>
+            <p>وصلنا طلب لإعادة تعيين كلمة المرور بتاعة حسابك على Zivo. اضغط على الزرار ده لإكمال العملية:</p>
+            <a href="${resetUrl}" style="display:inline-block;background:#10b981;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;margin:16px 0;">إعادة تعيين كلمة المرور</a>
+            <p>الرابط ده هيفضل شغال لمدة 30 دقيقة بس.</p>
+            <p>لو انت مش اللي طلبت ده، تجاهل الإيميل ده ببساطة.</p>
+          </div>
+        `,
+      }),
     });
 
-    await transporter.sendMail({
-      from: `"Zivo" <${process.env.EMAIL_USER}>`,
-      to: user.email,
-      subject: 'إعادة تعيين كلمة المرور - Zivo',
-      html: `
-        <div dir="rtl" style="font-family: Arial, sans-serif; max-width: 480px; margin: auto;">
-          <h2 style="color: #10b981;">إعادة تعيين كلمة المرور</h2>
-          <p>مرحبًا ${user.name}،</p>
-          <p>وصلنا طلب لإعادة تعيين كلمة المرور بتاعة حسابك على Zivo. اضغط على الزرار ده لإكمال العملية:</p>
-          <a href="${resetUrl}" style="display:inline-block;background:#10b981;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;margin:16px 0;">إعادة تعيين كلمة المرور</a>
-          <p>الرابط ده هيفضل شغال لمدة 30 دقيقة بس.</p>
-          <p>لو انت مش اللي طلبت ده، تجاهل الإيميل ده ببساطة.</p>
-        </div>
-      `,
-    });
+    if (!emailResponse.ok) {
+      const errText = await emailResponse.text();
+      console.error('RESEND ERROR:', errText);
+    }
 
     res.json({
       message: 'لو الإيميل ده مسجل عندنا، هيوصلك رابط إعادة تعيين كلمة المرور',
